@@ -1,0 +1,133 @@
+<html>
+	<head>
+		<style>
+			.today input{
+				background-color: yellow;
+			}
+		</style>
+		<script>
+			
+			/*DOM utils*/
+			function byName(id){return document.querySelector(`[name="${id}"]`);};
+			function byID(id){return document.getElementById(id);};
+			function select(selector){return document.querySelectorAll(`[name="${id}"]`);};
+			function del(element){element.parentElement.removeChild(element);}
+			
+			function main(){
+				function setCookie(cname, cvalue, exdays) {
+					var d = new Date();
+					d.setTime(d.getTime() + (exdays*24*60*60*1000));
+					var expires = "expires="+ d.toUTCString();
+					document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+				}
+				function getCookie(cname) {
+					var name = cname + "=";
+					var decodedCookie = decodeURIComponent(document.cookie);
+					var ca = decodedCookie.split(';');//get array of "key=value" strings
+					for(var i = 0; i <ca.length; i++) {
+						var c = ca[i];
+						while (c.charAt(0) == ' ') {//remove whitespace
+							c = c.substring(1);
+						}
+						if (c.indexOf(name) == 0) {//if key found
+							return c.substring(name.length, c.length);
+						}
+					}
+					return "";
+				}
+				
+				var cookiePedidos = getCookie("pedidos");
+				var pedidosActuales = cookiePedidos ? JSON.parse(cookiePedidos) : [];
+				refresh_pedidos_actuales();
+				
+				/*utility funcs*/
+				function pedido_from_input(){
+					let pedido = {};
+					pedido.nombre = byID("nombre").value;
+					pedido.fecha_entrega = byID("fecha_entrega").value;
+					pedido.nota = byID("nota").value;
+					return pedido;
+				}
+				
+				function sort_pedidos_actuales_by_date(){
+					pedidosActuales.sort((a,b) => a.fecha_entrega < b.fecha_entrega ? -1 : 1)
+				}
+				
+				
+				function refresh_pedidos_actuales(){
+					display_pedidos_actuales();
+					setCookie("pedidos", JSON.stringify(pedidosActuales), 1000000);
+				}
+				
+				//atomic funcs
+				function add_pedido(pedido){
+					pedidosActuales.push(pedido);
+					sort_pedidos_actuales_by_date();
+					refresh_pedidos_actuales();
+				}
+				
+				function remove_pedido(i){
+					pedidosActuales.splice(i,1);
+					refresh_pedidos_actuales();
+				}
+				
+				
+				function display_pedidos_actuales(){
+					let date = new Date();
+					date = new Date(date - (date.getTimezoneOffset() * 60000 ))
+						.toISOString()
+						.split("T")[0];
+					var pedidosDiv = byID("pedidos");
+					let aux = "";
+					let i = 0;
+					pedidosActuales.forEach((p)=>{
+						aux+=
+						`<div name="${i++}" class="${p.fecha_entrega==date?"today":""}">
+							<input readonly value="${p.nombre}"/>
+							<input readonly value="${p.fecha_entrega}"/>
+							<input readonly value="${p.nota}"/>
+							<button class="delete">borrar</button>
+						</div>`;
+					});
+					pedidosDiv.innerHTML = aux;
+					
+					//set delete script for each button
+					let len = pedidosActuales.length;
+					setTimeout(	
+						()=>{
+							for(let i=0;i<len;++i){
+								pedidosDiv.querySelector(`[name='${i}'] button.delete`).onclick=()=>remove_pedido(i);
+							}
+						},0
+					)
+					
+				}
+				
+				byID("add").addEventListener("click",()=>{
+					add_pedido(pedido_from_input());
+				});
+				
+				byID("clear").addEventListener("click",()=>{
+					byID("nombre").value = "";
+					byID("fecha_entrega").value = "";
+					byID("nota").value = "";
+				});
+			}
+		</script>
+	</head>
+	<body onload="main()">
+		Añadir Producto
+		<br><input id="nombre" placeholder="nombre"/>
+		<br><input id="fecha_entrega" type="date" placeholder="deadline"/>
+		<br><textarea id="nota" placeholder="algo que añadir?"></textarea>
+		<br>
+		<button id="add">GUARDAR</button>
+		<button id="clear">LIMPIAR CAMPOS</button>
+		
+		
+		<div>
+			Pedidos Sin Entregar
+			<div id="pedidos"/>
+		</div>
+	</body>
+</html>
